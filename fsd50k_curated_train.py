@@ -119,7 +119,7 @@ wandb_logger = WandbLogger(log_model='all')
 checkpoint_callback = ModelCheckpoint(monitor="val/loss", mode="min")
 trainer = pl.Trainer(
     accelerator="gpu", devices=4, strategy="ddp", max_epochs=100,
-    logger=wandb_logger, callbacks=[checkpoint_callback], limit_train_batches=10, limit_val_batches=5)
+    logger=wandb_logger, callbacks=[checkpoint_callback])
 
 # Data loaders and model
 model = FSD50KDiffusionModel()
