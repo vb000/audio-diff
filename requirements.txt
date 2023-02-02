@@ -3,6 +3,7 @@ torch
 numpy
 matplotlib
 pandas
+soundfile
 transformers
 pytorch-lightning
 audio-diffusion-pytorch
