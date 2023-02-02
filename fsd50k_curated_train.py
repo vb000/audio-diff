@@ -109,9 +109,9 @@ class LogPredictionSamplesCallback(Callback):
                 embedding_scale=15.0, # Higher for more text importance, suggested range: 1-15 (Classifier-Free Guidance Scale)
                 num_steps=10 # Higher for better quality, suggested num_steps: 10-100
             )
-            pl_module.logger.log({
-                'samples': wandb.Audio(sample[0, 0].cpu().numpy(), caption=label, sample_rate=44100)
-            })
+            columns = ['text', 'audio']
+            data = [[label, wandb.Audio(sample[0, 0].cpu().numpy(), sample_rate=44100)]]
+            pl_module.logger.log_table("samples", wandb.Table(columns=columns, data=data))
 
 def main():
     # Setting all the random seeds to the same value.
