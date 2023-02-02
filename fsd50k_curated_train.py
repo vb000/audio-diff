@@ -115,24 +115,18 @@ class FSD50KDiffusionModel(pl.LightningModule):
 
         return loss
 
-# reference can be retrieved in artifacts panel
-# "VERSION" can be a version (ex: "v2") or an alias ("latest or "best")
-checkpoint_reference = "USER/PROJECT/MODEL-RUN_ID:VERSION"
+# Strat run
+run = wandb.init(reinit=True, project="fsd50k-diffusion")
 
-# download checkpoint locally (if not already cached)
-run = wandb.init(project="fsd50k-diffusion")
-artifact = run.use_artifact(checkpoint_reference, type="model")
-artifact_dir = artifact.download()
-
-# Loggers and callbacks
+# Init trainer
 wandb_logger = WandbLogger(log_model='all')
 checkpoint_callback = ModelCheckpoint(monitor="val/loss", mode="min")
 trainer = pl.Trainer(
     accelerator="gpu", devices=4, strategy="ddp", max_epochs=100,
-    logger=wandb_logger, callbacks=[checkpoint_callback])
+    logger=wandb_logger, callbacks=[checkpoint_callback], limit_train_batches=10, limit_val_batches=5)
 
 # Data loaders and model
-model = FSD50KDiffusionModel.load_from_checkpoint(Path(artifact_dir) / "model.ckpt")
+model = FSD50KDiffusionModel()
 train_dl = DataLoader(
     FSD50KCurated('../semaudio-few-shot/data/FSD50KSoundScapes/FSD50KScaperFmt/train'),
     batch_size=8, shuffle=True, collate_fn=collate_fn)
@@ -142,3 +136,6 @@ val_dl = DataLoader(
 
 # Train
 trainer.fit(model, train_dl, val_dl)
+
+# End run
+run.finish()
