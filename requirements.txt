@@ -1,0 +1,4 @@
+ipykernel
+transformers
+audio-diffusion-pytorch
+pytorch-lightning
