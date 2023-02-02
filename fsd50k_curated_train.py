@@ -98,7 +98,7 @@ class FSD50KDiffusionModel(pl.LightningModule):
         return loss
 
 class LogPredictionSamplesCallback(Callback):
-    def on_validation_batch_start(trainer, pl_module, batch, batch_idx, dataloader_idx):
+    def on_validation_batch_start(self, trainer, pl_module, batch, batch_idx, dataloader_idx):
         # Log a sample to wandb
         if batch_idx % 10 == 0:
             noise = torch.rand_like(batch[0])[0:1]
