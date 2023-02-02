@@ -96,8 +96,6 @@ class FSD50KDiffusionModel(pl.LightningModule):
         self.log('val/loss', loss, batch_size=batch[0].shape[0])
 
         # Log a sample to wandb
-        columns = ["label", "generated audio"]
-        data = []
         if batch_idx % 100 == 0:
             noise = torch.rand_like(batch[0])[0:1]
             label = batch[1][0]
@@ -107,11 +105,9 @@ class FSD50KDiffusionModel(pl.LightningModule):
                 embedding_scale=15.0, # Higher for more text importance, suggested range: 1-15 (Classifier-Free Guidance Scale)
                 num_steps=10 # Higher for better quality, suggested num_steps: 10-100
             )
-            data.append([
-                label,
-                wandb.Audio(sample[0, 0].cpu().numpy(), sample_rate=44100)
-            ])
-        wandb.log({'samples': wandb.Table(columns=columns, data=data)})
+            wandb.log({
+                'samples': wandb.Audio(sample[0, 0].cpu().numpy(), caption=label, sample_rate=44100)
+            })
 
         return loss
 
