@@ -96,7 +96,7 @@ class FSD50KDiffusionModel(pl.LightningModule):
         self.log('val/loss', loss, batch_size=batch[0].shape[0])
 
         # Log a sample to wandb
-        if batch_idx % 100 == 0:
+        if batch_idx % 10 == 0:
             noise = torch.rand_like(batch[0])[0:1]
             label = batch[1][0]
             sample = self.model.sample(
