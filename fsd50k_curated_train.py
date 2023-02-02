@@ -128,7 +128,7 @@ def main():
         LogPredictionSamplesCallback()
     ]
     trainer = pl.Trainer(
-        accelerator="gpu", devices=4, strategy="ddp", max_epochs=100,
+        accelerator="gpu", devices=-1, strategy="ddp", max_epochs=100,
         logger=wandb_logger, callbacks=callbacks)
 
     # Data loaders and model
