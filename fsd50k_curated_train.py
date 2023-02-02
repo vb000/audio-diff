@@ -109,9 +109,9 @@ class FSD50KDiffusionModel(pl.LightningModule):
             )
             data.append([
                 label,
-                wandb.Audio(sample[0].cpu().numpy(), sample_rate=44100)
+                wandb.Audio(sample[0, 0].cpu().numpy(), sample_rate=44100)
             ])
-        wandb.log_table(key="samples", columns=columns, data=data)
+        wandb.log({'samples': wandb.Table(columns=columns, data=data)})
 
         return loss
 
