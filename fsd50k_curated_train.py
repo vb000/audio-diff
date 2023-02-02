@@ -7,6 +7,7 @@ from torch.utils.data import Dataset, DataLoader
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import Callback
 from audio_diffusion_pytorch import DiffusionModel, UNetV0, VDiffusion, VSampler
 import wandb
 
@@ -23,16 +24,16 @@ class FSD50KCurated(Dataset):
         self.files = {}
         for label in self.labels:
             self.files[label] = os.listdir(os.path.join(root_dir, label))
-        
+
         # Create a list of tuples (label, file)
         self.data = []
         for label in self.labels:
             for file in self.files[label]:
                 self.data.append((label, file))
-    
+
     def __len__(self):
         return len(self.data)
-    
+
     def __getitem__(self, idx):
         label, file = self.data[idx]
         path = os.path.join(self.root_dir, label, file)
@@ -73,7 +74,7 @@ class FSD50KDiffusionModel(pl.LightningModule):
         )
 
         self.lr = lr
-    
+
     def forward(self, batch):
         audio_wave, text = batch
         return self.model(
@@ -81,25 +82,28 @@ class FSD50KDiffusionModel(pl.LightningModule):
             text=text, # Text conditioning, one element per batch
             embedding_mask_proba=0.1 # Probability of masking text with learned embedding (Classifier-Free Guidance Mask)
         )
-    
+
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         return optimizer
 
     def training_step(self, batch, batch_idx):
         loss = self(batch)
-        self.log('train/loss', loss, batch_size=batch[0].shape[0])
+        self.log('train/loss', loss, batch_size=batch[0].shape[0], on_epoch=True)
         return loss
-    
+
     def validation_step(self, batch, batch_idx):
         loss = self(batch)
-        self.log('val/loss', loss, batch_size=batch[0].shape[0])
+        self.log('val/loss', loss, batch_size=batch[0].shape[0], on_epoch=True)
+        return loss
 
+class LogPredictionSamplesCallback(Callback):
+    def on_validation_batch_start(trainer, pl_module, batch, batch_idx, dataloader_idx):
         # Log a sample to wandb
         if batch_idx % 10 == 0:
             noise = torch.rand_like(batch[0])[0:1]
             label = batch[1][0]
-            sample = self.model.sample(
+            sample = pl_module.model.sample(
                 noise,
                 text=[label],
                 embedding_scale=15.0, # Higher for more text importance, suggested range: 1-15 (Classifier-Free Guidance Scale)
@@ -109,29 +113,36 @@ class FSD50KDiffusionModel(pl.LightningModule):
                 'samples': wandb.Audio(sample[0, 0].cpu().numpy(), caption=label, sample_rate=44100)
             })
 
-        return loss
+def main():
+    # Setting all the random seeds to the same value.
+    # This is important in a distributed training setting.
+    # Each rank will get its own set of initial weights.
+    # If they don't match up, the gradients will not match either,
+    # leading to training that may not converge.
+    pl.seed_everything(1)
 
-# Strat run
-run = wandb.init(reinit=True, project="fsd50k-diffusion", group="run_1")
+    # Init trainer
+    wandb_logger = WandbLogger(log_model='all')
+    callbacks = [
+        ModelCheckpoint(monitor="val/loss", mode="min"),
+        ModelCheckpoint(every_n_epochs=1, save_last=True),
+        LogPredictionSamplesCallback()
+    ]
+    trainer = pl.Trainer(
+        accelerator="gpu", devices=4, strategy="ddp", max_epochs=100,
+        logger=wandb_logger, callbacks=callbacks)
 
-# Init trainer
-wandb_logger = WandbLogger(log_model='all')
-checkpoint_callback = ModelCheckpoint(monitor="val/loss", mode="min")
-trainer = pl.Trainer(
-    accelerator="gpu", devices=4, strategy="ddp", max_epochs=100,
-    logger=wandb_logger, callbacks=[checkpoint_callback])
+    # Data loaders and model
+    model = FSD50KDiffusionModel()
+    train_dl = DataLoader(
+        FSD50KCurated('../semaudio-few-shot/data/FSD50KSoundScapes/FSD50KScaperFmt/train'),
+        batch_size=8, shuffle=True, collate_fn=collate_fn)
+    val_dl = DataLoader(
+        FSD50KCurated('../semaudio-few-shot/data/FSD50KSoundScapes/FSD50KScaperFmt/val'),
+        batch_size=8, shuffle=False, collate_fn=collate_fn)
 
-# Data loaders and model
-model = FSD50KDiffusionModel()
-train_dl = DataLoader(
-    FSD50KCurated('../semaudio-few-shot/data/FSD50KSoundScapes/FSD50KScaperFmt/train'),
-    batch_size=8, shuffle=True, collate_fn=collate_fn)
-val_dl = DataLoader(
-    FSD50KCurated('../semaudio-few-shot/data/FSD50KSoundScapes/FSD50KScaperFmt/val'),
-    batch_size=8, shuffle=False, collate_fn=collate_fn)
+    # Train
+    trainer.fit(model, train_dl, val_dl)
 
-# Train
-trainer.fit(model, train_dl, val_dl)
-
-# End run
-run.finish()
+if __name__ == '__main__':
+    main()
