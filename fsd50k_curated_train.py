@@ -124,8 +124,7 @@ def main():
     # Init trainer
     wandb_logger = WandbLogger(project='fsd50-diffusion')
     callbacks = [
-        ModelCheckpoint(monitor="val/loss", mode="min"),
-        ModelCheckpoint(every_n_epochs=1, save_last=True),
+        ModelCheckpoint(monitor="val/loss", mode="min", every_n_epochs=1, save_top_k=1),
         LogPredictionSamplesCallback()
     ]
     trainer = pl.Trainer(
