@@ -1,4 +1,8 @@
 ipykernel
+torch
+numpy
+matplotlib
+pandas
 transformers
-audio-diffusion-pytorch
 pytorch-lightning
+audio-diffusion-pytorch

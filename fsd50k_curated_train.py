@@ -94,11 +94,11 @@ class FSD50KDiffusionModel(pl.LightningModule):
 
 train_dl = DataLoader(
     FSD50KCurated('../semaudio-few-shot/data/FSD50KSoundScapes/FSD50KScaperFmt/train'),
-    batch_size=2, shuffle=True, collate_fn=collate_fn)
+    batch_size=8, shuffle=True, collate_fn=collate_fn)
 val_dl = DataLoader(
     FSD50KCurated('../semaudio-few-shot/data/FSD50KSoundScapes/FSD50KScaperFmt/val'),
-    batch_size=2, shuffle=False, collate_fn=collate_fn)
+    batch_size=8, shuffle=False, collate_fn=collate_fn)
 
 model = FSD50KDiffusionModel()
-trainer = pl.Trainer(gpus=1, max_epochs=10)
+trainer = pl.Trainer(gpus=4, max_epochs=10)
 trainer.fit(model, train_dl, val_dl)
