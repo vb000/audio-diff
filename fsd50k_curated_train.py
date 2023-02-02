@@ -111,7 +111,7 @@ class LogPredictionSamplesCallback(Callback):
             )
             columns = ['text', 'audio']
             data = [[label, wandb.Audio(sample[0, 0].cpu().numpy(), sample_rate=44100)]]
-            pl_module.logger.log_table("samples", wandb.Table(columns=columns, data=data))
+            pl_module.logger.log_table(key="samples", columns=columns, data=data)
 
 def main():
     # Setting all the random seeds to the same value.
