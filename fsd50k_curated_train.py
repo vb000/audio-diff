@@ -122,7 +122,7 @@ def main():
     pl.seed_everything(1)
 
     # Init trainer
-    wandb_logger = WandbLogger(log_model='all')
+    wandb_logger = WandbLogger(project='fsd50-diffusion')
     callbacks = [
         ModelCheckpoint(monitor="val/loss", mode="min"),
         ModelCheckpoint(every_n_epochs=1, save_last=True),
