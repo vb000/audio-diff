@@ -109,7 +109,7 @@ class LogPredictionSamplesCallback(Callback):
                 embedding_scale=15.0, # Higher for more text importance, suggested range: 1-15 (Classifier-Free Guidance Scale)
                 num_steps=10 # Higher for better quality, suggested num_steps: 10-100
             )
-            wandb.log({
+            pl_module.logger.log({
                 'samples': wandb.Audio(sample[0, 0].cpu().numpy(), caption=label, sample_rate=44100)
             })
 
