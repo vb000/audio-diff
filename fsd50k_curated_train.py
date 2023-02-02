@@ -112,7 +112,7 @@ class FSD50KDiffusionModel(pl.LightningModule):
         return loss
 
 # Strat run
-run = wandb.init(reinit=True, project="fsd50k-diffusion", group="ddp")
+run = wandb.init(reinit=True, project="fsd50k-diffusion", group="run_1")
 
 # Init trainer
 wandb_logger = WandbLogger(log_model='all')
