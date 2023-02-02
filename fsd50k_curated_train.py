@@ -100,5 +100,5 @@ val_dl = DataLoader(
     batch_size=8, shuffle=False, collate_fn=collate_fn)
 
 model = FSD50KDiffusionModel()
-trainer = pl.Trainer(gpus=4, max_epochs=10)
+trainer = pl.Trainer(accelerator="gpu", devices=4, strategy="ddp", max_epochs=100)
 trainer.fit(model, train_dl, val_dl)
