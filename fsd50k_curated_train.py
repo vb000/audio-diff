@@ -36,6 +36,8 @@ class FSD50KCurated(Dataset):
         if fs != self.sr:
             audio = torchaudio.functional.resample(audio, fs, self.sr)
         audio = audio[:, :self.max_len]
+        if audio.shape[1] < self.max_len:
+            audio = torch.nn.functional.pad(audio, (0, self.max_len - audio.shape[1]))
         return audio, label
 
 def collate_fn(batch):
