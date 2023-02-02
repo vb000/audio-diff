@@ -68,23 +68,26 @@ class FSD50KDiffusionModel(pl.LightningModule):
 
         self.lr = lr
     
-    def forward(self, x, y):
-        return self.model(x, y)
+    def forward(self, batch):
+        audio_wave, text = batch
+        return self.model(
+            audio_wave,
+            text=text, # Text conditioning, one element per batch
+            embedding_mask_proba=0.1 # Probability of masking text with learned embedding (Classifier-Free Guidance Mask)
+        )
     
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         return optimizer
 
     def training_step(self, batch, batch_idx):
-        x, y = batch
-        loss = self(x, y)
-        self.log('train_loss', loss)
+        loss = self(batch)
+        self.log('train_loss', loss, batch_size=batch[0].shape[0])
         return loss
     
     def validation_step(self, batch, batch_idx):
-        x, y = batch
-        loss = self(x, y)
-        self.log('val_loss', loss)
+        loss = self(batch)
+        self.log('val_loss', loss, batch_size=batch[0].shape[0])
         return loss
 
 train_dl = DataLoader(
@@ -95,5 +98,5 @@ val_dl = DataLoader(
     batch_size=8, shuffle=False, collate_fn=collate_fn)
 
 model = FSD50KDiffusionModel()
-trainer = pl.Trainer(gpus=1, max_epochs=10)
+trainer = pl.Trainer(gpus=0, max_epochs=10)
 trainer.fit(model, train_dl, val_dl)
