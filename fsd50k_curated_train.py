@@ -53,7 +53,7 @@ def collate_fn(batch):
     return audios, list(labels)
 
 class FSD50KDiffusionModel(pl.LightningModule):
-    def __init__(self, lr=1e-4):
+    def __init__(self, lr=3e-4):
         super().__init__()
         self.model = DiffusionModel(
             net_t=UNetV0, # The model type used for diffusion (U-Net V0 in this case)
