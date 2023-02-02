@@ -6,3 +6,4 @@ pandas
 transformers
 pytorch-lightning
 audio-diffusion-pytorch
+wandb

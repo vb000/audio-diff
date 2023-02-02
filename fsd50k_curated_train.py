@@ -1,10 +1,14 @@
 import os
+from pathlib import Path
 
 import torch
 import torchaudio
 from torch.utils.data import Dataset, DataLoader
 import pytorch_lightning as pl
+from pytorch_lightning.loggers import WandbLogger
+from pytorch_lightning.callbacks import ModelCheckpoint
 from audio_diffusion_pytorch import DiffusionModel, UNetV0, VDiffusion, VSampler
+import wandb
 
 class FSD50KCurated(Dataset):
     def __init__(self, root_dir, sr=44100, max_len=2**18):
@@ -84,14 +88,51 @@ class FSD50KDiffusionModel(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         loss = self(batch)
-        self.log('train_loss', loss, batch_size=batch[0].shape[0])
+        self.log('train/loss', loss, batch_size=batch[0].shape[0])
         return loss
     
     def validation_step(self, batch, batch_idx):
         loss = self(batch)
-        self.log('val_loss', loss, batch_size=batch[0].shape[0])
+        self.log('val/loss', loss, batch_size=batch[0].shape[0])
+
+        # Log a sample to wandb
+        columns = ["label", "generated audio"]
+        data = []
+        if batch_idx % 100 == 0:
+            noise = torch.rand_like(batch[0])[0:1]
+            label = batch[1][0]
+            sample = self.model.sample(
+                noise,
+                text=[label],
+                embedding_scale=15.0, # Higher for more text importance, suggested range: 1-15 (Classifier-Free Guidance Scale)
+                num_steps=10 # Higher for better quality, suggested num_steps: 10-100
+            )
+            data.append([
+                label,
+                wandb.Audio(sample[0].cpu().numpy(), sample_rate=44100)
+            ])
+        wandb.log_table(key="samples", columns=columns, data=data)
+
         return loss
 
+# reference can be retrieved in artifacts panel
+# "VERSION" can be a version (ex: "v2") or an alias ("latest or "best")
+checkpoint_reference = "USER/PROJECT/MODEL-RUN_ID:VERSION"
+
+# download checkpoint locally (if not already cached)
+run = wandb.init(project="fsd50k-diffusion")
+artifact = run.use_artifact(checkpoint_reference, type="model")
+artifact_dir = artifact.download()
+
+# Loggers and callbacks
+wandb_logger = WandbLogger(log_model='all')
+checkpoint_callback = ModelCheckpoint(monitor="val/loss", mode="min")
+trainer = pl.Trainer(
+    accelerator="gpu", devices=4, strategy="ddp", max_epochs=100,
+    logger=wandb_logger, callbacks=[checkpoint_callback])
+
+# Data loaders and model
+model = FSD50KDiffusionModel.load_from_checkpoint(Path(artifact_dir) / "model.ckpt")
 train_dl = DataLoader(
     FSD50KCurated('../semaudio-few-shot/data/FSD50KSoundScapes/FSD50KScaperFmt/train'),
     batch_size=8, shuffle=True, collate_fn=collate_fn)
@@ -99,6 +140,5 @@ val_dl = DataLoader(
     FSD50KCurated('../semaudio-few-shot/data/FSD50KSoundScapes/FSD50KScaperFmt/val'),
     batch_size=8, shuffle=False, collate_fn=collate_fn)
 
-model = FSD50KDiffusionModel()
-trainer = pl.Trainer(accelerator="gpu", devices=4, strategy="ddp", max_epochs=100)
+# Train
 trainer.fit(model, train_dl, val_dl)
