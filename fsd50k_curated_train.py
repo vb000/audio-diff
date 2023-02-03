@@ -111,7 +111,7 @@ class LogPredictionSamplesCallback(Callback):
                 num_steps=10 # Higher for better quality, suggested num_steps: 10-100
             )
             trainer.logger.experiment.log({
-                "samples": [wandb.Audio(sample[0].cpu().numpy(), caption=label, sample_rate=44100)],
+                "samples": [wandb.Audio(sample[0, 0].cpu().numpy(), caption=label, sample_rate=44100)],
                 "global_step": trainer.global_step})
 
 def main():
@@ -120,13 +120,12 @@ def main():
     # Each rank will get its own set of initial weights.
     # If they don't match up, the gradients will not match either,
     # leading to training that may not converge.
-    pl.seed_everything(1)
+    pl.seed_everything(42)
 
     # Init trainer
-    wandb_logger = WandbLogger(project='fsd50k-diffusion', log_model='all')
+    wandb_logger = WandbLogger(project='fsd50k-diffusion')
     callbacks = [
         ModelCheckpoint(monitor="val/loss", mode="min"),
-        ModelCheckpoint(save_last=True),
         LogPredictionSamplesCallback()
     ]
     trainer = pl.Trainer(
