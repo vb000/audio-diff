@@ -107,12 +107,12 @@ class LogPredictionSamplesCallback(Callback):
             sample = pl_module.model.sample(
                 noise,
                 text=[label],
-                embedding_scale=15.0, # Higher for more text importance, suggested range: 1-15 (Classifier-Free Guidance Scale)
+                embedding_scale=10.0, # Higher for more text importance, suggested range: 1-15 (Classifier-Free Guidance Scale)
                 num_steps=10 # Higher for better quality, suggested num_steps: 10-100
             )
-            columns = ['text', 'audio']
-            data = [[label, wandb.Audio(sample[0, 0].cpu().numpy(), sample_rate=44100)]]
-            pl_module.logger.log_table(key="samples", columns=columns, data=data)
+            trainer.logger.experiment.log({
+                "samples": [wandb.Audio(sample[0].cpu().numpy(), caption=label, sample_rate=44100)],
+                "global_step": trainer.global_step})
 
 def main():
     # Setting all the random seeds to the same value.
@@ -123,9 +123,10 @@ def main():
     pl.seed_everything(1)
 
     # Init trainer
-    wandb_logger = WandbLogger(project='fsd50k-diffusion')
+    wandb_logger = WandbLogger(project='fsd50k-diffusion', log_model='all')
     callbacks = [
-        ModelCheckpoint(monitor="val/loss", mode="min", every_n_epochs=1, save_top_k=1),
+        ModelCheckpoint(monitor="val/loss", mode="min"),
+        ModelCheckpoint(save_last=True),
         LogPredictionSamplesCallback()
     ]
     trainer = pl.Trainer(
